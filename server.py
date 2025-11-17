@@ -235,6 +235,49 @@ def analyze_image_with_ai(image_path):
         print(f"AI分析失败: {e}")
         return ['图片', '照片']
 
+def ensure_tags_for_photo(photo, tag_names, tag_type='auto'):
+    """确保给定标签已创建并与照片关联"""
+    attached = []
+    for tag_name in tag_names:
+        cleaned = (tag_name or '').strip()
+        if not cleaned:
+            continue
+        tag = Tag.query.filter_by(name=cleaned).first()
+        if not tag:
+            tag = Tag(name=cleaned, type=tag_type)
+            db.session.add(tag)
+            db.session.flush()
+        relation_exists = PhotoTag.query.filter_by(photo_id=photo.id, tag_id=tag.id).first()
+        if not relation_exists:
+            db.session.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))
+            attached.append(cleaned)
+    return attached
+
+def generate_exif_tag_names(exif_data):
+    """基于EXIF信息生成标签名称"""
+    tag_names = []
+    taken_at = exif_data.get('taken_at')
+    if isinstance(taken_at, datetime):
+        tag_names.append(f"日期:{taken_at.strftime('%Y-%m-%d')}")
+        tag_names.append(f"年份:{taken_at.year}")
+        tag_names.append(f"月份:{taken_at.strftime('%Y-%m')}")
+
+    camera_model = (exif_data.get('camera_model') or '').strip()
+    camera_make = (exif_data.get('camera_make') or '').strip()
+    if camera_make and camera_model:
+        tag_names.append(f"相机:{camera_make} {camera_model}")
+    elif camera_model:
+        tag_names.append(f"相机:{camera_model}")
+    elif camera_make:
+        tag_names.append(f"相机品牌:{camera_make}")
+
+    latitude = exif_data.get('latitude')
+    longitude = exif_data.get('longitude')
+    if latitude is not None and longitude is not None:
+        tag_names.append("含地理位置")
+
+    return [name for name in tag_names if name]
+
 # API路由
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -347,32 +390,22 @@ def upload_photo():
         db.session.add(photo)
         db.session.commit()
         
+        # 基于EXIF的信息生成标签
+        exif_tag_names = generate_exif_tag_names(exif_data)
+        ensure_tags_for_photo(photo, exif_tag_names, tag_type='auto')
+
         # AI分析图片内容
         ai_tags = analyze_image_with_ai(file_path)
-        for tag_name in ai_tags:
-            tag = Tag.query.filter_by(name=tag_name).first()
-            if not tag:
-                tag = Tag(name=tag_name, type='auto')
-                db.session.add(tag)
-                db.session.flush()
-            
-            photo_tag = PhotoTag(photo_id=photo.id, tag_id=tag.id)
-            db.session.add(photo_tag)
+        ensure_tags_for_photo(photo, ai_tags, tag_type='auto')
         
         # 添加自定义标签
         custom_tags = request.form.get('tags', '')
         if custom_tags:
-            for tag_name in custom_tags.split(','):
-                tag_name = tag_name.strip()
-                if tag_name:
-                    tag = Tag.query.filter_by(name=tag_name).first()
-                    if not tag:
-                        tag = Tag(name=tag_name, type='custom')
-                        db.session.add(tag)
-                        db.session.flush()
-                    
-                    photo_tag = PhotoTag(photo_id=photo.id, tag_id=tag.id)
-                    db.session.add(photo_tag)
+            ensure_tags_for_photo(
+                photo,
+                [name.strip() for name in custom_tags.split(',') if name.strip()],
+                tag_type='custom'
+            )
         
         db.session.commit()
         
@@ -401,6 +434,8 @@ def get_photos():
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '')
     tag = request.args.get('tag', '')
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
     sort_by = request.args.get('sort_by', 'created_at')
     order = request.args.get('order', 'desc')
     
@@ -418,6 +453,25 @@ def get_photos():
     # 标签筛选
     if tag:
         query = query.join(PhotoTag).join(Tag).filter(Tag.name == tag)
+    
+    # 日期范围筛选（基于拍摄时间）
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        except ValueError:
+            start_date = None
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1)
+        except ValueError:
+            end_date = None
+    
+    if start_date:
+        query = query.filter(Photo.taken_at >= start_date)
+    if end_date:
+        query = query.filter(Photo.taken_at < end_date)
     
     # 排序
     if sort_by == 'taken_at':
@@ -525,6 +579,14 @@ def edit_photo(photo_id):
             if 'saturation' in data:
                 enhancer = ImageEnhance.Color(img)
                 img = enhancer.enhance(float(data['saturation']))
+            if 'hue' in data:
+                hue_shift = float(data['hue'])
+                if hue_shift != 0:
+                    hsv_img = img.convert('HSV')
+                    hsv_array = np.array(hsv_img, dtype=np.uint16)
+                    shift_value = int(((hue_shift % 360) / 360) * 255)
+                    hsv_array[:, :, 0] = (hsv_array[:, :, 0] + shift_value) % 255
+                    img = Image.fromarray(hsv_array.astype('uint8'), 'HSV').convert('RGB')
 
             # 保存编辑后的图片
             img.save(photo.file_path, quality=95)

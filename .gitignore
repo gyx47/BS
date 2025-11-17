@@ -70,3 +70,7 @@ build/
 # 临时文件
 *.tmp
 *.temp
+
+系统设计报告.md
+系统设计报告.pdf
+系统设计报告-assets/

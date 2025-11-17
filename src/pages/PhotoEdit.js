@@ -1,12 +1,74 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiSave, FiRotateCw, FiRotateCcw, FiCornerUpLeft, FiCornerUpRight, FiRefreshCcw, FiRefreshCw, FiX } from 'react-icons/fi';
-import { ChromePicker } from 'react-color';
+import { FiX } from 'react-icons/fi';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import './PhotoEdit.css';
+
+const clampChannel = (value) => Math.max(0, Math.min(255, value));
+
+const rgbToHsl = (r, g, b) => {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h;
+  let s;
+  const l = (max + min) / 2;
+
+  if (max === min) {
+    h = 0;
+    s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return [h, s, l];
+};
+
+const hslToRgb = (h, s, l) => {
+  let r;
+  let g;
+  let b;
+
+  if (s === 0) {
+    r = g = b = l; // achromatic
+  } else {
+    const hue2rgb = (p, q, t) => {
+      let tempT = t;
+      if (tempT < 0) tempT += 1;
+      if (tempT > 1) tempT -= 1;
+      if (tempT < 1 / 6) return p + (q - p) * 6 * tempT;
+      if (tempT < 1 / 2) return q;
+      if (tempT < 2 / 3) return p + (q - p) * (2 / 3 - tempT) * 6;
+      return p;
+    };
+
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+};
 
 const PhotoEdit = () => {
   const { id } = useParams();
@@ -16,17 +78,11 @@ const PhotoEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [image, setImage] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [colorPickerType, setColorPickerType] = useState('brightness');
   const [adjustments, setAdjustments] = useState({
     brightness: 0,
     contrast: 0,
     saturation: 0,
-    hue: 0,
-    blur: 0,
-    sharpness: 0
+    hue: 0
   });
   const [cropEnabled, setCropEnabled] = useState(false);
   const [crop, setCrop] = useState({ unit: 'px', x: 0, y: 0, width: 0, height: 0 });
@@ -65,7 +121,6 @@ const PhotoEdit = () => {
       setImage(img);
       setNaturalSize({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
       drawImage(img);
-      saveToHistory();
     };
     img.src = `/api/photo/${photoData.id}?token=${localStorage.getItem('token') || ''}`;
   };
@@ -95,9 +150,9 @@ const PhotoEdit = () => {
     if (adjustments.brightness !== 0) {
       const brightness = adjustments.brightness;
       for (let i = 0; i < data.length; i += 4) {
-        data[i] = Math.max(0, Math.min(255, data[i] + brightness));
-        data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + brightness));
-        data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + brightness));
+        data[i] = clampChannel(data[i] + brightness);
+        data[i + 1] = clampChannel(data[i + 1] + brightness);
+        data[i + 2] = clampChannel(data[i + 2] + brightness);
       }
     }
 
@@ -105,9 +160,9 @@ const PhotoEdit = () => {
     if (adjustments.contrast !== 0) {
       const contrast = (adjustments.contrast + 100) / 100;
       for (let i = 0; i < data.length; i += 4) {
-        data[i] = Math.max(0, Math.min(255, (data[i] - 128) * contrast + 128));
-        data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] - 128) * contrast + 128));
-        data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] - 128) * contrast + 128));
+        data[i] = clampChannel((data[i] - 128) * contrast + 128);
+        data[i + 1] = clampChannel((data[i + 1] - 128) * contrast + 128);
+        data[i + 2] = clampChannel((data[i + 2] - 128) * contrast + 128);
       }
     }
 
@@ -119,31 +174,29 @@ const PhotoEdit = () => {
         const g = data[i + 1];
         const b = data[i + 2];
         const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-        
-        data[i] = Math.max(0, Math.min(255, gray + (r - gray) * saturation));
-        data[i + 1] = Math.max(0, Math.min(255, gray + (g - gray) * saturation));
-        data[i + 2] = Math.max(0, Math.min(255, gray + (b - gray) * saturation));
+
+        data[i] = clampChannel(gray + (r - gray) * saturation);
+        data[i + 1] = clampChannel(gray + (g - gray) * saturation);
+        data[i + 2] = clampChannel(gray + (b - gray) * saturation);
+      }
+    }
+
+    // 应用色相调整
+    if (adjustments.hue !== 0) {
+      const hueShift = adjustments.hue;
+      for (let i = 0; i < data.length; i += 4) {
+        const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+        let newHue = h + hueShift / 360;
+        if (newHue < 0) newHue += 1;
+        if (newHue > 1) newHue -= 1;
+        const [nr, ng, nb] = hslToRgb(newHue, s, l);
+        data[i] = nr;
+        data[i + 1] = ng;
+        data[i + 2] = nb;
       }
     }
 
     ctx.putImageData(imageData, 0, 0);
-  };
-
-  const saveToHistory = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const imageData = canvas.toDataURL();
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(imageData);
-    
-    if (newHistory.length > 20) {
-      newHistory.shift();
-    } else {
-      setHistoryIndex(historyIndex + 1);
-    }
-    
-    setHistory(newHistory);
   };
 
   const handleAdjustmentChange = (type, value) => {
@@ -160,89 +213,16 @@ const PhotoEdit = () => {
     }, 100);
   };
 
-  const handleRotate = (direction) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !image) return;
-
-    const ctx = canvas.getContext('2d');
-    const isClockwise = direction === 'cw';
-    
-    if (isClockwise) {
-      canvas.width = image.height;
-      canvas.height = image.width;
-      ctx.translate(canvas.width, 0);
-      ctx.rotate(Math.PI / 2);
-    } else {
-      canvas.width = image.height;
-      canvas.height = image.width;
-      ctx.translate(0, canvas.height);
-      ctx.rotate(-Math.PI / 2);
-    }
-    
-    ctx.drawImage(image, 0, 0);
-    saveToHistory();
-  };
-
-  const handleFlip = (direction) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !image) return;
-
-    const ctx = canvas.getContext('2d');
-    
-    if (direction === 'horizontal') {
-      ctx.scale(-1, 1);
-      ctx.translate(-canvas.width, 0);
-    } else {
-      ctx.scale(1, -1);
-      ctx.translate(0, -canvas.height);
-    }
-    
-    ctx.drawImage(image, 0, 0);
-    saveToHistory();
-  };
-
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      loadImageFromHistory(history[newIndex]);
-    }
-  };
-
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      loadImageFromHistory(history[newIndex]);
-    }
-  };
-
-  const loadImageFromHistory = (imageData) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = imageData;
-  };
-
   const handleSave = async () => {
     try {
       setSaving(true);
       
       const canvas = canvasRef.current;
-      // 计算旋转/翻转状态（简单实现：仅保存时把旋转角和翻转标志传给后端；
-      // 由于上面本地预览已绘制，后端会按该参数对源图再次变换）
       const payload = {
         brightness: adjustments.brightness,
         contrast: adjustments.contrast,
         saturation: adjustments.saturation,
-        rotation_deg: 0,
-        flip_horizontal: false,
-        flip_vertical: false
+        hue: adjustments.hue
       };
 
       if (cropEnabled && crop.width > 0 && crop.height > 0) {
@@ -271,9 +251,7 @@ const PhotoEdit = () => {
       brightness: 0,
       contrast: 0,
       saturation: 0,
-      hue: 0,
-      blur: 0,
-      sharpness: 0
+      hue: 0
     });
     
     if (image) {
@@ -321,22 +299,6 @@ const PhotoEdit = () => {
           </div>
           
           <div className="header-actions">
-            <button 
-              onClick={handleUndo} 
-              className="action-btn"
-              disabled={historyIndex <= 0}
-            >
-              <FiCornerUpLeft />
-              撤销
-            </button>
-            <button 
-              onClick={handleRedo} 
-              className="action-btn"
-              disabled={historyIndex >= history.length - 1}
-            >
-              <FiCornerUpRight />
-              重做
-            </button>
             <button onClick={handleReset} className="action-btn">
               重置
             </button>
@@ -375,43 +337,13 @@ const PhotoEdit = () => {
           {/* 编辑面板 */}
           <div className="edit-panel">
             <div className="panel-section">
-              <h3>变换</h3>
-              <div className="transform-buttons">
-                <button 
-                  onClick={() => setCropEnabled(!cropEnabled)} 
-                  className="transform-btn"
-                >
-                  {cropEnabled ? '退出裁剪' : '启用裁剪'}
-                </button>
-                <button 
-                  onClick={() => handleRotate('ccw')} 
-                  className="transform-btn"
-                >
-                  <FiRotateCcw />
-                  逆时针旋转
-                </button>
-                <button 
-                  onClick={() => handleRotate('cw')} 
-                  className="transform-btn"
-                >
-                  <FiRotateCw />
-                  顺时针旋转
-                </button>
-                <button 
-                  onClick={() => handleFlip('horizontal')} 
-                  className="transform-btn"
-                >
-                  <FiRefreshCw />
-                  水平翻转
-                </button>
-                <button 
-                  onClick={() => handleFlip('vertical')} 
-                  className="transform-btn"
-                >
-                  <FiRefreshCcw />
-                  垂直翻转
-                </button>
-              </div>
+              <h3>裁剪</h3>
+              <button 
+                onClick={() => setCropEnabled(!cropEnabled)} 
+                className="transform-btn"
+              >
+                {cropEnabled ? '退出裁剪' : '启用裁剪'}
+              </button>
             </div>
 
             <div className="panel-section">
@@ -468,36 +400,6 @@ const PhotoEdit = () => {
                   />
                   <span className="value">{adjustments.hue}</span>
                 </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <h3>滤镜</h3>
-              <div className="filter-buttons">
-                <button 
-                  onClick={() => handleAdjustmentChange('blur', 5)} 
-                  className="filter-btn"
-                >
-                  模糊
-                </button>
-                <button 
-                  onClick={() => handleAdjustmentChange('sharpness', 20)} 
-                  className="filter-btn"
-                >
-                  锐化
-                </button>
-                <button 
-                  onClick={() => handleAdjustmentChange('brightness', 30)} 
-                  className="filter-btn"
-                >
-                  增亮
-                </button>
-                <button 
-                  onClick={() => handleAdjustmentChange('contrast', 30)} 
-                  className="filter-btn"
-                >
-                  增强对比度
-                </button>
               </div>
             </div>
           </div>

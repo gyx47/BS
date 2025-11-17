@@ -21,6 +21,8 @@ const Gallery = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalPhotos, setTotalPhotos] = useState(0);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const navigate = useNavigate();
 
@@ -36,6 +38,12 @@ const Gallery = () => {
         sort_by: sortBy,
         order: sortOrder
       };
+      if (startDate) {
+        params.start_date = startDate;
+      }
+      if (endDate) {
+        params.end_date = endDate;
+      }
 
       const response = await axios.get('/api/photos', { 
         params,
@@ -58,7 +66,7 @@ const Gallery = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedTag, sortBy, sortOrder]);
+  }, [searchTerm, selectedTag, sortBy, sortOrder, startDate, endDate]);
 
   const fetchTags = async () => {
     try {
@@ -75,8 +83,11 @@ const Gallery = () => {
 
   useEffect(() => {
     fetchPhotos(1, true);
-    fetchTags();
   }, [fetchPhotos]);
+
+  useEffect(() => {
+    fetchTags();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -96,6 +107,21 @@ const Gallery = () => {
       setSortBy(newSortBy);
       setSortOrder('desc');
     }
+    setPage(1);
+  };
+
+  const handleDateChange = (type, value) => {
+    if (type === 'start') {
+      setStartDate(value);
+    } else {
+      setEndDate(value);
+    }
+    setPage(1);
+  };
+
+  const handleResetDate = () => {
+    setStartDate('');
+    setEndDate('');
     setPage(1);
   };
 
@@ -245,6 +271,35 @@ const Gallery = () => {
                     {tag.name}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="filter-group date-filter">
+              <label className="filter-label">日期范围:</label>
+              <div className="date-inputs">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleDateChange('start', e.target.value)}
+                  className="date-input"
+                />
+                <span className="date-separator">至</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => handleDateChange('end', e.target.value)}
+                  className="date-input"
+                  min={startDate || undefined}
+                />
+                {(startDate || endDate) && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary clear-date-btn"
+                    onClick={handleResetDate}
+                  >
+                    清除
+                  </button>
+                )}
               </div>
             </div>
           </div>

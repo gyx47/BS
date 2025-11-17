@@ -173,6 +173,36 @@
   color: white;
 }
 
+.date-filter .date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.date-input {
+  padding: 8px 12px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  min-width: 160px;
+  color: #333;
+}
+
+.date-input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.date-separator {
+  color: #666;
+}
+
+.clear-date-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .selection-actions {
   background: #e3f2fd;
   border: 1px solid #bbdefb;

@@ -83,6 +83,13 @@ const Dashboard = () => {
     );
   }
 
+  const token = localStorage.getItem('token') || '';
+
+  const getThumbnailSrc = (photoId) => {
+    if (!token) return `/api/thumbnail/${photoId}`;
+    return `/api/thumbnail/${photoId}?token=${encodeURIComponent(token)}`;
+  };
+
   return (
     <div className="dashboard-container">
       <div className="container">
@@ -161,9 +168,14 @@ const Dashboard = () => {
                 <div key={photo.id} className="photo-item">
                   <div className="photo-thumbnail">
                     <img 
-                      src={`/api/thumbnail/${photo.id}`} 
+                      src={getThumbnailSrc(photo.id)} 
                       alt={photo.original_filename}
                       loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src =
+                          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIGZpbGw9IiNFRkVGRTgiIHJ4PSIxMiIvPjxwYXRoIGQ9Ik02MCA1MC4yNWMtOC4zNCAwLTE1LjAzLTYuNjktMTUuMDMtMTUuMDNTNTEuNjYgMjAuMTggNjAgMjAuMThzMTUuMDMgNi42OSAxNS4wMyAxNS4wMy02LjY5IDE1LjA0LTE1LjAzIDE1LjA0bTAtMzUuMjVjLTExLjA4IDAtMjAuMTggOS4xLTIwLjE4IDIwLjE4UzQ4LjkyIDU1LjQ2IDYwIDU1LjQ2czIwLjE4LTkuMSAyMC4xOC0yMC4xOC05LjEtMjAuMTgtMjAuMTgtMjAuMThaIiBmaWxsPSIjQ0NDIi8+PC9zdmc+';
+                      }}
                     />
                   </div>
                   <div className="photo-info">
