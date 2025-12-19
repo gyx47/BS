@@ -1,16 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { FiX, FiChevronLeft, FiChevronRight, FiDownload, FiEdit3, FiTrash2, FiShare2 } from 'react-icons/fi';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { FiX, FiChevronLeft, FiChevronRight, FiDownload, FiEdit3, FiTrash2, FiShare2, FiPlay, FiPause } from 'react-icons/fi';
 import axios from 'axios';
 import './ImageGallery.css';
 
-const ImageGallery = ({ photos, index, onClose }) => {
+const ImageGallery = ({ photos, index, onClose, autoPlay = false, interval = 5000 }) => {
   const [currentIndex, setCurrentIndex] = useState(index);
   const [loading, setLoading] = useState(false);
   const [photoInfo, setPhotoInfo] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(autoPlay);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     setCurrentIndex(index);
   }, [index]);
+
+  const handlePrevious = useCallback(() => {
+    setCurrentIndex(prev => 
+      prev > 0 ? prev - 1 : photos.length - 1
+    );
+    setIsPlaying(false);
+  }, [photos.length]);
+
+  const handleNext = useCallback(() => {
+    setCurrentIndex(prev => 
+      prev < photos.length - 1 ? prev + 1 : 0
+    );
+    setIsPlaying(false);
+  }, [photos.length]);
+
+  const togglePlay = useCallback(() => {
+    setIsPlaying(prev => !prev);
+  }, []);
+
+  useEffect(() => {
+    if (isPlaying && photos.length > 1) {
+      intervalRef.current = setInterval(() => {
+        setCurrentIndex(prev => (prev + 1) % photos.length);
+      }, interval);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+  }, [isPlaying, photos.length, interval]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -24,24 +58,16 @@ const ImageGallery = ({ photos, index, onClose }) => {
         case 'ArrowRight':
           handleNext();
           break;
+        case ' ':
+          e.preventDefault();
+          togglePlay();
+          break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex]);
-
-  const handlePrevious = () => {
-    setCurrentIndex(prev => 
-      prev > 0 ? prev - 1 : photos.length - 1
-    );
-  };
-
-  const handleNext = () => {
-    setCurrentIndex(prev => 
-      prev < photos.length - 1 ? prev + 1 : 0
-    );
-  };
+  }, [onClose, handlePrevious, handleNext, togglePlay]);
 
   const handleDelete = async () => {
     if (!window.confirm('确定要删除这张照片吗？')) {
@@ -191,6 +217,17 @@ const ImageGallery = ({ photos, index, onClose }) => {
           </div>
 
           <div className="gallery-actions">
+            {photos.length > 1 && (
+              <button 
+                className="action-btn"
+                onClick={togglePlay}
+                title={isPlaying ? "暂停 (空格)" : "播放 (空格)"}
+              >
+                {isPlaying ? <FiPause /> : <FiPlay />}
+                {isPlaying ? '暂停' : '播放'}
+              </button>
+            )}
+            
             <button 
               className="action-btn"
               onClick={handleDownload}

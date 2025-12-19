@@ -12,3 +12,24 @@ requests==2.31.0
 opencv-python==4.8.1.78
 numpy==1.24.3
 python-magic-bin
+
+# ============================================
+# 可选依赖：AI图片分析服务
+# ============================================
+# 根据选择的AI服务，安装对应的依赖：
+#
+# OpenAI Vision API（推荐）:
+# openai>=1.0.0
+#
+# Google Cloud Vision API:
+# google-cloud-vision>=3.0.0
+#
+# 本地AI模型（Transformers）:
+# transformers>=4.30.0
+# torch>=2.0.0
+# torchvision>=0.15.0
+#
+# Google Gemini:
+google-genai>=0.3.0
+#
+# 详细配置说明请参考: docs/AI_CONFIGURATION.md

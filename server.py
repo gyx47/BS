@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from urllib.parse import quote_plus
 import os
 from pathlib import Path
+from utils.ai_analyzer import analyze_image_with_ai
 
 # 显式加载项目根目录下的 .env（确保在读取 env 之前执行）
 env_path = Path(__file__).resolve().parent / ".env"
@@ -170,70 +171,8 @@ def extract_exif_data(image_path):
         print(f"提取EXIF数据失败: {e}")
         return {}
 
-def analyze_image_with_ai(image_path):
-    """使用AI分析图片内容（这里使用模拟数据，实际项目中可以调用真实的AI服务）"""
-    try:
-        # 这里可以集成真实的AI服务，如OpenAI Vision API、Google Vision API等
-        # 目前使用基于文件名的简单分析
-        filename = os.path.basename(image_path).lower()
-        
-        ai_tags = []
-        
-        # 基于文件名的简单分析
-        if any(word in filename for word in ['sunset', 'sunrise', 'sun', 'sky']):
-            ai_tags.extend(['日落', '天空', '风景'])
-        elif any(word in filename for word in ['mountain', 'hill', 'peak']):
-            ai_tags.extend(['山脉', '自然', '风景'])
-        elif any(word in filename for word in ['sea', 'ocean', 'beach', 'water']):
-            ai_tags.extend(['海洋', '海滩', '水'])
-        elif any(word in filename for word in ['city', 'building', 'street']):
-            ai_tags.extend(['城市', '建筑', '街道'])
-        elif any(word in filename for word in ['flower', 'tree', 'plant']):
-            ai_tags.extend(['植物', '花朵', '自然'])
-        elif any(word in filename for word in ['person', 'people', 'face']):
-            ai_tags.extend(['人物', '肖像'])
-        else:
-            ai_tags.extend(['图片', '照片'])
-        
-        # 使用OpenCV进行更高级的分析
-        try:
-            import cv2
-            img = cv2.imread(image_path)
-            if img is not None:
-                # 颜色分析
-                hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-                
-                # 检测主要颜色
-                if np.mean(hsv[:,:,0]) < 30:  # 红色系
-                    ai_tags.append('红色')
-                elif 30 <= np.mean(hsv[:,:,0]) < 60:  # 黄色系
-                    ai_tags.append('黄色')
-                elif 60 <= np.mean(hsv[:,:,0]) < 90:  # 绿色系
-                    ai_tags.append('绿色')
-                elif 90 <= np.mean(hsv[:,:,0]) < 120:  # 青色系
-                    ai_tags.append('青色')
-                elif 120 <= np.mean(hsv[:,:,0]) < 150:  # 蓝色系
-                    ai_tags.append('蓝色')
-                else:  # 紫色系
-                    ai_tags.append('紫色')
-                
-                # 亮度分析
-                brightness = np.mean(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
-                if brightness > 200:
-                    ai_tags.append('明亮')
-                elif brightness < 50:
-                    ai_tags.append('昏暗')
-                else:
-                    ai_tags.append('中等亮度')
-                    
-        except ImportError:
-            pass  # OpenCV不可用，跳过高级分析
-        
-        return list(set(ai_tags))  # 去重
-        
-    except Exception as e:
-        print(f"AI分析失败: {e}")
-        return ['图片', '照片']
+# analyze_image_with_ai 函数已移至 utils/ai_analyzer.py
+# 现在从 utils 模块导入使用
 
 def ensure_tags_for_photo(photo, tag_names, tag_type='auto'):
     """确保给定标签已创建并与照片关联"""

@@ -4,6 +4,7 @@ import { FiSearch, FiFilter, FiGrid, FiList, FiPlay, FiTrash2, FiEdit3, FiEye } 
 import axios from 'axios';
 import PhotoItem from '../components/PhotoItem';
 import ImageGallery from '../components/ImageGallery';
+import Slideshow from '../components/Slideshow';
 import './Gallery.css';
 
 const Gallery = () => {
@@ -17,6 +18,9 @@ const Gallery = () => {
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [showGallery, setShowGallery] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [showSlideshow, setShowSlideshow] = useState(false);
+  const [slideshowPhotos, setSlideshowPhotos] = useState([]);
+  const [slideshowIndex, setSlideshowIndex] = useState(0);
   const [tags, setTags] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -169,12 +173,18 @@ const Gallery = () => {
   };
 
   const handleSlideshow = () => {
-    if (selectedPhotos.length === 0) return;
-    
-    const selectedPhotoObjects = photos.filter(photo => selectedPhotos.includes(photo.id));
-    setPhotos(selectedPhotoObjects);
-    setGalleryIndex(0);
-    setShowGallery(true);
+    if (selectedPhotos.length === 0) {
+      // 如果没有选择照片，使用所有照片
+      if (photos.length === 0) return;
+      setSlideshowPhotos(photos);
+      setSlideshowIndex(0);
+    } else {
+      // 使用选中的照片
+      const selectedPhotoObjects = photos.filter(photo => selectedPhotos.includes(photo.id));
+      setSlideshowPhotos(selectedPhotoObjects);
+      setSlideshowIndex(0);
+    }
+    setShowSlideshow(true);
   };
 
   const handlePhotoClick = (photo, index) => {
@@ -194,7 +204,7 @@ const Gallery = () => {
   ];
 
   return (
-    <div className="gallery-container">
+    <div className="gallery-page">
       <div className="container">
         <div className="gallery-header">
           <h1>我的相册</h1>
@@ -321,10 +331,9 @@ const Gallery = () => {
               <button
                 onClick={handleSlideshow}
                 className="btn btn-primary"
-                disabled={selectedPhotos.length === 0}
               >
                 <FiPlay />
-                幻灯片播放
+                {selectedPhotos.length > 0 ? `幻灯片播放 (${selectedPhotos.length}张)` : '幻灯片播放 (全部)'}
               </button>
               <button
                 onClick={handleDeleteSelected}
@@ -392,6 +401,17 @@ const Gallery = () => {
           photos={photos}
           index={galleryIndex}
           onClose={() => setShowGallery(false)}
+        />
+      )}
+
+      {/* 图片轮播 */}
+      {showSlideshow && (
+        <Slideshow
+          photos={slideshowPhotos}
+          index={slideshowIndex}
+          onClose={() => setShowSlideshow(false)}
+          autoPlay={true}
+          interval={4000}
         />
       )}
     </div>

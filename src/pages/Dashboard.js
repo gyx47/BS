@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiUpload, FiImage, FiTrendingUp, FiClock, FiTag } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiUpload, FiImage, FiTrendingUp, FiClock, FiTag, FiPlay } from 'react-icons/fi';
 import axios from 'axios';
+import Slideshow from '../components/Slideshow';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -13,6 +14,8 @@ const Dashboard = () => {
   });
   const [recentPhotos, setRecentPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showSlideshow, setShowSlideshow] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDashboardData();
@@ -159,9 +162,18 @@ const Dashboard = () => {
           <div className="recent-photos">
             <div className="section-header">
               <h2>最近上传</h2>
-              <Link to="/gallery" className="view-all-link">
-                查看全部 →
-              </Link>
+              <div className="section-actions">
+                <button
+                  onClick={() => setShowSlideshow(true)}
+                  className="btn btn-primary slideshow-btn"
+                >
+                  <FiPlay />
+                  幻灯片播放
+                </button>
+                <Link to="/gallery" className="view-all-link">
+                  查看全部 →
+                </Link>
+              </div>
             </div>
             <div className="photos-grid">
               {recentPhotos.map((photo) => (
@@ -225,6 +237,17 @@ const Dashboard = () => {
               立即上传
             </Link>
           </div>
+        )}
+
+        {/* 图片轮播 */}
+        {showSlideshow && recentPhotos.length > 0 && (
+          <Slideshow
+            photos={recentPhotos}
+            index={0}
+            onClose={() => setShowSlideshow(false)}
+            autoPlay={true}
+            interval={4000}
+          />
         )}
       </div>
     </div>
