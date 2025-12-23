@@ -1,0 +1,45 @@
+# 后端Dockerfile
+FROM python:3.11-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libmysqlclient-dev \
+    pkg-config \
+    libmagic1 \
+    libmagic-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制requirements文件
+COPY requirements.txt .
+
+# 安装Python依赖
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY . .
+
+# 创建必要的目录
+RUN mkdir -p uploads thumbnails logs
+
+# 设置入口脚本权限
+RUN chmod +x docker-entrypoint.sh
+
+# 安装MySQL客户端（用于健康检查）
+RUN apt-get update && apt-get install -y default-mysql-client && rm -rf /var/lib/apt/lists/*
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=server.py
+ENV FLASK_ENV=production
+
+# 暴露端口
+EXPOSE 5000
+
+# 使用入口脚本
+ENTRYPOINT ["./docker-entrypoint.sh"]
+

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: photo_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-photo_management}
+      MYSQL_USER: ${DB_USER:-photo}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-photo}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database_schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./mysql_conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    networks:
+      - photo_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: photo_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-photo}
+      DB_PASSWORD: ${DB_PASSWORD:-photo}
+      DB_NAME: ${DB_NAME:-photo_management}
+      FLASK_ENV: production
+      FLASK_APP: server.py
+      PYTHONUNBUFFERED: 1
+      # AI配置（可选）
+      AI_PROVIDER: ${AI_PROVIDER:-fallback}
+      ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./thumbnails:/app/thumbnails
+      - ./logs:/app/logs
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - photo_network
+    entrypoint: ["/bin/bash", "docker-entrypoint.sh"]
+
+  # 前端服务
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: photo_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - photo_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  photo_network:
+    driver: bridge
+
