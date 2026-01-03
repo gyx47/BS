@@ -1,26 +1,29 @@
-# 前端Dockerfile - 多阶段构建
+# --- 第一阶段：构建 (Build Stage) ---
 FROM node:18-alpine AS build
 
 # 设置工作目录
 WORKDIR /app
 
-# 复制package文件
+# 复制依赖定义文件
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production
+# 1. 安装所有依赖 (包括构建工具)
+# 之前的 --only=production 会导致找不到 build 命令
+RUN npm ci
 
 # 复制源代码
 COPY public ./public
 COPY src ./src
 
-# 构建应用
+# 2. 构建应用 (生成静态文件)
 RUN npm run build
 
-# 生产阶段
+# --- 第二阶段：生产 (Production Stage) ---
 FROM nginx:alpine
 
-# 复制构建产物到nginx
+# 3. 从第一阶段复制构建产物 (/app/build 或 /app/dist，取决于你的框架)
+# 注意：如果你用的是 Vite，通常生成的是 /app/dist，如果是 CRA 则是 /app/build
+# 请根据你的项目实际输出目录修改下面这一行
 COPY --from=build /app/build /usr/share/nginx/html
 
 # 复制nginx配置
@@ -31,4 +34,3 @@ EXPOSE 80
 
 # 启动nginx
 CMD ["nginx", "-g", "daemon off;"]
-

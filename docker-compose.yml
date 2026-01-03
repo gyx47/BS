@@ -34,7 +34,7 @@ services:
     container_name: photo_backend
     restart: unless-stopped
     environment:
-      DB_HOST: mysql
+      DB_HOST: photo_mysql
       DB_PORT: 3306
       DB_USER: ${DB_USER:-photo}
       DB_PASSWORD: ${DB_PASSWORD:-photo}

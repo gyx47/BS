@@ -4,8 +4,11 @@
 set -e
 
 echo "等待MySQL服务就绪..."
+# 使用可配置的 DB_HOST 并在客户端禁用 SSL 校验（容器间使用自签证书时会触发 TLS 验证失败）
 DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpassword}
-until mysqladmin ping -h mysql -u root -p${DB_ROOT_PASSWORD} --silent 2>/dev/null || mysqladmin ping -h mysql -u root --silent 2>/dev/null; do
+DB_HOST=${DB_HOST:-mysql}
+until mysqladmin ping -h "$DB_HOST" -u root -p"${DB_ROOT_PASSWORD}" --silent --skip-ssl 2>/dev/null \
+  || mysqladmin ping -h "$DB_HOST" -u root --silent --skip-ssl 2>/dev/null; do
   echo "MySQL未就绪，等待5秒..."
   sleep 5
 done
