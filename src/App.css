@@ -1,7 +1,7 @@
 .App {
   min-height: 100vh;
   height: 100%;
-  background-color: #f5f5f5;
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
 }
@@ -48,20 +48,19 @@ main {
 .photo-item {
   position: relative;
   background: white;
-  border-radius: 12px;
+  border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid #e0e0e0;
+  transition: border-color 0.2s ease;
   cursor: pointer;
 }
 
 .photo-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  border-color: #999;
 }
 
 .photo-item.selected {
-  border: 3px solid #007bff;
+  border: 2px solid #333;
 }
 
 .photo-thumbnail {
@@ -99,27 +98,27 @@ main {
 /* 上传区域 */
 .upload-area {
   border: 2px dashed #ccc;
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 40px;
   text-align: center;
   background: #fafafa;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
   cursor: pointer;
 }
 
 .upload-area:hover {
-  border-color: #007bff;
-  background: #f0f8ff;
+  border-color: #999;
+  background: #f5f5f5;
 }
 
 .upload-area.dragover {
-  border-color: #007bff;
-  background: #e3f2fd;
+  border-color: #666;
+  background: #f0f0f0;
 }
 
 .upload-icon {
   font-size: 48px;
-  color: #007bff;
+  color: #666;
   margin-bottom: 16px;
 }
 
@@ -138,9 +137,9 @@ main {
 .search-filters {
   background: white;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 0;
   margin-bottom: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
 }
 
 .search-bar {
@@ -151,16 +150,16 @@ main {
 
 .search-input {
   flex: 1;
-  padding: 12px 16px;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 16px;
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font-size: 14px;
   outline: none;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.2s ease;
 }
 
 .search-input:focus {
-  border-color: #007bff;
+  border-color: #666;
 }
 
 .filter-tags {
@@ -170,23 +169,23 @@ main {
 }
 
 .filter-tag {
-  padding: 8px 16px;
-  background: #f8f9fa;
-  border: 1px solid #e1e5e9;
-  border-radius: 20px;
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 2px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
+  transition: background-color 0.2s ease;
+  font-size: 13px;
 }
 
 .filter-tag:hover {
-  background: #e9ecef;
+  background: #e8e8e8;
 }
 
 .filter-tag.active {
-  background: #007bff;
+  background: #333;
   color: white;
-  border-color: #007bff;
+  border-color: #333;
 }
 
 /* 操作按钮 */
@@ -200,33 +199,32 @@ main {
 }
 
 .action-btn {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  background: #007bff;
-  color: white;
-  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #333;
+  font-size: 20px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .action-btn:hover {
-  background: #0056b3;
-  transform: scale(1.1);
+  background: #f5f5f5;
 }
 
 .action-btn.danger {
-  background: #dc3545;
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  background: #fff;
+  color: #d32f2f;
+  border-color: #d32f2f;
 }
 
 .action-btn.danger:hover {
-  background: #c82333;
+  background: #ffebee;
 }
 
 /* 图片编辑器 */

@@ -87,6 +87,8 @@ const PhotoEdit = () => {
   const [cropEnabled, setCropEnabled] = useState(false);
   const [crop, setCrop] = useState({ unit: 'px', x: 0, y: 0, width: 0, height: 0 });
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const [displayedImageSize, setDisplayedImageSize] = useState({ width: 0, height: 0 });
+  const cropImageRef = useRef(null);
 
   useEffect(() => {
     fetchPhoto();
@@ -100,6 +102,11 @@ const PhotoEdit = () => {
       
       if (foundPhoto) {
         setPhoto(foundPhoto);
+        // 设置原始图片尺寸（从数据库获取）
+        setNaturalSize({ 
+          width: foundPhoto.width || 0, 
+          height: foundPhoto.height || 0 
+        });
         loadImage(foundPhoto);
       } else {
         toast.error('照片不存在');
@@ -226,7 +233,44 @@ const PhotoEdit = () => {
       };
 
       if (cropEnabled && crop.width > 0 && crop.height > 0) {
-        payload.crop = { x: Math.round(crop.x), y: Math.round(crop.y), width: Math.round(crop.width), height: Math.round(crop.height) };
+        // 将裁剪坐标从显示尺寸转换为原始图片尺寸
+        if (displayedImageSize.width > 0 && displayedImageSize.height > 0 && naturalSize.width > 0 && naturalSize.height > 0) {
+          const scaleX = naturalSize.width / displayedImageSize.width;
+          const scaleY = naturalSize.height / displayedImageSize.height;
+          
+          const cropX = Math.max(0, Math.round(crop.x * scaleX));
+          const cropY = Math.max(0, Math.round(crop.y * scaleY));
+          const cropWidth = Math.min(Math.round(crop.width * scaleX), naturalSize.width - cropX);
+          const cropHeight = Math.min(Math.round(crop.height * scaleY), naturalSize.height - cropY);
+          
+          payload.crop = {
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight
+          };
+          
+          console.log('裁剪坐标转换:', {
+            displayCrop: { x: crop.x, y: crop.y, width: crop.width, height: crop.height },
+            displaySize: displayedImageSize,
+            naturalSize: naturalSize,
+            scale: { x: scaleX, y: scaleY },
+            finalCrop: payload.crop
+          });
+        } else {
+          // 如果无法获取显示尺寸，直接使用裁剪坐标（假设已经是原始尺寸）
+          console.warn('无法获取显示尺寸，使用原始裁剪坐标:', {
+            displayedImageSize,
+            naturalSize,
+            crop
+          });
+          payload.crop = {
+            x: Math.round(crop.x),
+            y: Math.round(crop.y),
+            width: Math.round(crop.width),
+            height: Math.round(crop.height)
+          };
+        }
       }
 
       await axios.post(`/api/photo/${id}/edit`, {
@@ -317,11 +361,47 @@ const PhotoEdit = () => {
           <div className="canvas-section">
             <div className="canvas-container">
               {cropEnabled ? (
-                <ReactCrop crop={crop} onChange={(c) => setCrop(c)}>
+                <ReactCrop 
+                  crop={crop} 
+                  onChange={(c) => setCrop(c)}
+                  onImageLoaded={(img) => {
+                    // ReactCrop的onImageLoaded返回的img对象包含显示尺寸
+                    // img.width 和 img.height 是实际渲染尺寸
+                    const displayWidth = img.width || img.naturalWidth;
+                    const displayHeight = img.height || img.naturalHeight;
+                    setDisplayedImageSize({ 
+                      width: displayWidth, 
+                      height: displayHeight 
+                    });
+                    cropImageRef.current = img;
+                    console.log('裁剪图片加载:', {
+                      displaySize: { width: displayWidth, height: displayHeight },
+                      naturalSize: { width: img.naturalWidth, height: img.naturalHeight },
+                      originalSize: naturalSize
+                    });
+                  }}
+                >
                   <img
+                    ref={cropImageRef}
                     src={`/api/photo/${photo.id}?token=${localStorage.getItem('token') || ''}`}
                     alt={photo.original_filename}
                     style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                    onLoad={(e) => {
+                      // 备用方法：从DOM元素获取实际显示尺寸
+                      const img = e.target;
+                      const rect = img.getBoundingClientRect();
+                      const displayWidth = rect.width || img.offsetWidth || img.width;
+                      const displayHeight = rect.height || img.offsetHeight || img.height;
+                      setDisplayedImageSize({ 
+                        width: displayWidth, 
+                        height: displayHeight 
+                      });
+                      console.log('图片onLoad:', {
+                        displaySize: { width: displayWidth, height: displayHeight },
+                        naturalSize: { width: img.naturalWidth, height: img.naturalHeight },
+                        rect: { width: rect.width, height: rect.height }
+                      });
+                    }}
                   />
                 </ReactCrop>
               ) : (

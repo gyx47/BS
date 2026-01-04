@@ -38,42 +38,49 @@ class AIAnalyzer:
         分析图片并返回标签列表
         按优先级尝试：智谱AI -> OpenAI -> DeepSeek -> Gemini -> Google Vision -> 本地模型 -> 回退方案
         """
+        tags = []
+        
         # 如果明确指定了provider，使用指定的provider
         if self.provider != 'fallback':
             if self.provider == 'zhipu' and self.zhipu_api_key:
-                return self._analyze_with_zhipu(image_path)
-            if self.provider == 'openai' and self.openai_api_key:
-                return self._analyze_with_openai(image_path)
-            if self.provider == 'deepseek' and self.deepseek_api_key:
-                return self._analyze_with_deepseek(image_path)
-            if self.provider == 'gemini' and self.gemini_api_key:
-                return self._analyze_with_gemini(image_path)
-            if self.provider == 'google' and self.google_api_key:
-                return self._analyze_with_google_vision(image_path)
-            if self.provider == 'local':
-                return self._analyze_with_local_model(image_path)
+                tags = self._analyze_with_zhipu(image_path)
+            elif self.provider == 'openai' and self.openai_api_key:
+                tags = self._analyze_with_openai(image_path)
+            elif self.provider == 'deepseek' and self.deepseek_api_key:
+                tags = self._analyze_with_deepseek(image_path)
+            elif self.provider == 'gemini' and self.gemini_api_key:
+                tags = self._analyze_with_gemini(image_path)
+            elif self.provider == 'google' and self.google_api_key:
+                tags = self._analyze_with_google_vision(image_path)
+            elif self.provider == 'local':
+                tags = self._analyze_with_local_model(image_path)
+        else:
+            # 如果provider是fallback或未设置，自动检测可用的API，优先使用智谱AI
+            if self.zhipu_api_key:
+                print("检测到智谱AI API Key，使用智谱AI进行分析...")
+                tags = self._analyze_with_zhipu(image_path)
+            elif self.openai_api_key:
+                print("检测到OpenAI API Key，使用OpenAI进行分析...")
+                tags = self._analyze_with_openai(image_path)
+            elif self.deepseek_api_key:
+                print("检测到DeepSeek API Key，使用DeepSeek进行分析...")
+                tags = self._analyze_with_deepseek(image_path)
+            elif self.gemini_api_key:
+                print("检测到Gemini API Key，使用Gemini进行分析...")
+                tags = self._analyze_with_gemini(image_path)
+            elif self.google_api_key:
+                print("检测到Google Vision API Key，使用Google Vision进行分析...")
+                tags = self._analyze_with_google_vision(image_path)
+            elif self.provider == 'local':
+                tags = self._analyze_with_local_model(image_path)
+            else:
+                tags = self._fallback_analysis(image_path)
         
-        # 如果provider是fallback或未设置，自动检测可用的API，优先使用智谱AI
-        if self.zhipu_api_key:
-            print("检测到智谱AI API Key，使用智谱AI进行分析...")
-            return self._analyze_with_zhipu(image_path)
-        if self.openai_api_key:
-            print("检测到OpenAI API Key，使用OpenAI进行分析...")
-            return self._analyze_with_openai(image_path)
-        if self.deepseek_api_key:
-            print("检测到DeepSeek API Key，使用DeepSeek进行分析...")
-            return self._analyze_with_deepseek(image_path)
-        if self.gemini_api_key:
-            print("检测到Gemini API Key，使用Gemini进行分析...")
-            return self._analyze_with_gemini(image_path)
-        if self.google_api_key:
-            print("检测到Google Vision API Key，使用Google Vision进行分析...")
-            return self._analyze_with_google_vision(image_path)
+        # 对返回的标签进行顿号分割处理
+        if tags:
+            tags = split_tags_by_pause(tags)
         
-        # 如果都没有，尝试本地模型或回退方案
-        if self.provider == 'local':
-            return self._analyze_with_local_model(image_path)
-        return self._fallback_analysis(image_path)
+        return tags
     
     def _analyze_with_openai(self, image_path: str) -> List[str]:
         """使用OpenAI Vision API分析图片"""
@@ -595,11 +602,29 @@ def get_analyzer() -> AIAnalyzer:
         _analyzer = AIAnalyzer()
     return _analyzer
 
+def split_tags_by_pause(tags: List[str]) -> List[str]:
+    """将包含顿号的标签分割成多个独立标签"""
+    result = []
+    for tag in tags:
+        tag = tag.strip()
+        if not tag:
+            continue
+        # 如果包含顿号，按顿号分割
+        if '、' in tag:
+            sub_tags = [sub_tag.strip() for sub_tag in tag.split('、') if sub_tag.strip()]
+            result.extend(sub_tags)
+        else:
+            result.append(tag)
+    return result
+
 def analyze_image_with_ai(image_path: str) -> List[str]:
     """
     分析图片并返回标签列表
     这是对外提供的统一接口
+    返回的标签会自动按顿号分割
     """
     analyzer = get_analyzer()
-    return analyzer.analyze(image_path)
+    tags = analyzer.analyze(image_path)
+    # 确保返回的标签已经按顿号分割
+    return split_tags_by_pause(tags) if tags else []
 

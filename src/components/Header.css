@@ -25,9 +25,9 @@
 .logo-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: #333;
   color: white;
-  border-radius: 8px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -58,13 +58,14 @@
 }
 
 .nav-link:hover {
-  color: #007bff;
-  background: #f8f9fa;
+  color: #333;
+  background: #f5f5f5;
 }
 
 .nav-link.active {
-  color: #007bff;
-  background: #e3f2fd;
+  color: #333;
+  background: #e8e8e8;
+  font-weight: 600;
 }
 
 .nav-icon {

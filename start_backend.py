@@ -49,14 +49,16 @@ def create_directories():
 
 def start_server():
     """启动服务器"""
+    # 从环境变量读取端口，默认5000
+    backend_port = int(os.getenv("BACKEND_PORT", "5000"))
     print("🚀 启动图片管理后端服务器...")
-    print("📍 服务器地址: http://localhost:5000")
-    print("📚 API文档: http://localhost:5000/api")
+    print(f"📍 服务器地址: http://localhost:{backend_port}")
+    print(f"📚 API文档: http://localhost:{backend_port}/api")
     print("按 Ctrl+C 停止服务器")
     
     try:
         from server import app
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=True, host='0.0.0.0', port=backend_port)
     except KeyboardInterrupt:
         print("\n👋 服务器已停止")
     except Exception as e:

@@ -7,6 +7,7 @@ MCP (Model Context Protocol) 服务器
 import asyncio
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from mcp.server import Server
@@ -53,7 +54,7 @@ class PhotoInfo:
     thumbnail_url: str
 
 class PhotoManagementMCP:
-    def __init__(self, api_base_url: str = "http://localhost:5000"):
+    def __init__(self, api_base_url: str = "http://localhost:4000"):
         self.api_base_url = api_base_url
         self.session = requests.Session()
         
@@ -142,7 +143,8 @@ class PhotoManagementMCP:
         }
 
 # 创建MCP实例
-photo_mcp = PhotoManagementMCP()
+# 创建MCP实例，优先使用环境变量 MCP_API_BASE_URL（方便在容器中通过服务名访问后端）
+photo_mcp = PhotoManagementMCP(api_base_url=os.getenv('MCP_API_BASE_URL', 'http://backend:4000'))
 
 @server.list_tools()
 async def list_tools() -> List[Tool]:
