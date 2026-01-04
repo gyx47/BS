@@ -35,3 +35,4 @@ zhipuai
 google-genai>=0.3.0
 #
 # 详细配置说明请参考: docs/AI_CONFIGURATION.md
+mcp

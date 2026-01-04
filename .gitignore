@@ -74,3 +74,7 @@ build/
 系统设计报告.md
 系统设计报告.pdf
 系统设计报告-assets/
+
+*.md
+*.pdf
+check_dog_photos.py
